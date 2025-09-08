@@ -1,26 +1,11 @@
+// lib/pages/course_list_page.dart
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/content_item.dart';
 import 'course_detail_page.dart';
 import '../widgets/bottom_navigation.dart';
 import '../widgets/header.dart';
-import 'all_weather_course_page.dart'; // 作成したページをインポート
-
-// 各コレクションからデータを取得する共通関数
-Future<List<ContentItem>> _fetchFromCollection(String collectionName) async {
-  try {
-    final querySnapshot = await FirebaseFirestore.instance
-        .collection(collectionName)
-        .get();
-
-    return querySnapshot.docs
-        .map((doc) => ContentItem.fromFirestore(doc))
-        .toList();
-  } catch (e) {
-    debugPrint('データの読み込み中にエラーが発生しました: $e');
-    return [];
-  }
-}
+import '../services/firestore_service.dart';
 
 class CourseListPage extends StatefulWidget {
   final String title;
@@ -40,6 +25,7 @@ class CourseListPageState extends State<CourseListPage> {
   final TextEditingController _searchController = TextEditingController();
   String _searchText = '';
   final int _selectedIndex = 4;
+  final FirestoreService _firestoreService = FirestoreService();
 
   @override
   void initState() {
@@ -63,7 +49,7 @@ class CourseListPageState extends State<CourseListPage> {
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => CourseDetailPage(course: item),
+            builder: (context) => CourseDetailPage(courseId: item.id),
           ),
         );
       },
@@ -99,48 +85,6 @@ class CourseListPageState extends State<CourseListPage> {
     );
   }
 
-  // 特集コース（全天候型コース）のカード
-  Widget _buildFeaturedCourseCard(BuildContext context) {
-    return InkWell(
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const AllWeatherCoursePage()),
-        );
-      },
-      child: Card(
-        margin: const EdgeInsets.only(bottom: 16.0),
-        clipBehavior: Clip.antiAlias,
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Image.network(
-              'https://storage.googleapis.com/mahargoyk-public-assets/course_rainy_day_kobe.jpg',
-              width: double.infinity,
-              height: 180,
-              fit: BoxFit.cover,
-            ),
-            const Padding(
-              padding: EdgeInsets.all(12.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '天気を気にせず楽しめる！神戸の全天候型おでかけコース',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                  SizedBox(height: 4),
-                  Text('雨の日でも安心の屋内施設を中心に巡る特集コースです。'),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -164,53 +108,42 @@ class CourseListPageState extends State<CourseListPage> {
             ),
             const SizedBox(height: 16),
             Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    _buildFeaturedCourseCard(context),
-                    const Divider(height: 24),
-                    FutureBuilder<List<ContentItem>>(
-                      future: _fetchFromCollection(widget.collectionName),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return const Center(
-                            child: CircularProgressIndicator(),
-                          );
-                        } else if (snapshot.hasError) {
-                          return Center(
-                            child: Text(
-                              'データの読み込み中にエラーが発生しました: ${snapshot.error}',
-                            ),
-                          );
-                        } else if (!snapshot.hasData ||
-                            snapshot.data!.isEmpty) {
-                          return const Center(child: Text('データが見つかりませんでした。'));
-                        } else {
-                          final items = snapshot.data!
-                              .where(
-                                (item) =>
-                                    item.title.contains(_searchText) ||
-                                    item.description.contains(_searchText),
-                              )
-                              .toList();
+              child: StreamBuilder<QuerySnapshot>(
+                stream: _firestoreService.getSpotData(widget.collectionName),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    return Center(
+                      child: Text('データの読み込み中にエラーが発生しました: ${snapshot.error}'),
+                    );
+                  } else if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const Center(child: Text('モデルコースが見つかりませんでした。'));
+                  } else {
+                    final items = snapshot.data!.docs
+                        .map((doc) => ContentItem.fromFirestore(doc))
+                        .where(
+                          (item) =>
+                              item.title.contains(_searchText) ||
+                              item.description.contains(_searchText),
+                        )
+                        .toList();
 
-                          return GridView.count(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
+                    return GridView.builder(
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 3,
                             crossAxisSpacing: 16,
                             mainAxisSpacing: 16,
                             childAspectRatio: 1.2,
-                            children: items.map((item) {
-                              return _buildImageCard(context, item);
-                            }).toList(),
-                          );
-                        }
+                          ),
+                      itemCount: items.length,
+                      itemBuilder: (context, index) {
+                        return _buildImageCard(context, items[index]);
                       },
-                    ),
-                  ],
-                ),
+                    );
+                  }
+                },
               ),
             ),
           ],
