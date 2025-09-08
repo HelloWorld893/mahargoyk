@@ -14,6 +14,9 @@ Future<void> main() async {
     'description': '須磨から舞子まで、神戸の美しい海岸線を巡るコースです。歴史や絶景、グルメも楽しめます。',
     'imageUrl':
         'https://storage.googleapis.com/mahargoyk-public-assets/course_kobe_seaside.jpg',
+    // フィルター用の情報を追加
+    'area': '須磨・垂水',
+    'themes': ['#自然', '#風景', '#歴史文化'],
   };
 
   // --- 2. コースの情報を 'courses' コレクションに追加 ---
@@ -32,7 +35,7 @@ Future<void> main() async {
           'https://storage.googleapis.com/mahargoyk-public-assets/spot_suma_beach.jpg',
       'hours': '24時間',
       'price': '無料',
-      // 最初のスポットなので、アクセス情報はコースの起点からのもの
+      // 最初のスポットなので、コースの起点からのアクセス情報
       'access': 'JR須磨駅から徒歩【10分】',
     },
     {

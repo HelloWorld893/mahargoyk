@@ -1,9 +1,9 @@
-// lib/widgets/bottom_navigation.dart
 import 'package:flutter/material.dart';
 import '../pages/home_page.dart';
-import '../pages/content_list_page.dart';
 import '../pages/map_page.dart';
-import '../pages/course_list_page.dart'; // course_list_page.dart をインポート
+// 'as' を使ってファイルにユニークな名前を付ける
+import '../pages/content_list_page.dart' as content_list;
+import '../pages/course_list_page.dart' as course_list;
 
 class BottomNavigationItem extends StatelessWidget {
   final IconData icon;
@@ -12,12 +12,12 @@ class BottomNavigationItem extends StatelessWidget {
   final VoidCallback onTap;
 
   const BottomNavigationItem({
-    Key? key,
+    super.key,
     required this.icon,
     required this.label,
     required this.isSelected,
     required this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -42,15 +42,13 @@ class BottomNavigationItem extends StatelessWidget {
 
 class AppBottomNavigation extends StatefulWidget {
   final int currentIndex;
-
-  const AppBottomNavigation({Key? key, required this.currentIndex})
-    : super(key: key);
+  const AppBottomNavigation({super.key, required this.currentIndex});
 
   @override
-  _AppBottomNavigationState createState() => _AppBottomNavigationState();
+  AppBottomNavigationState createState() => AppBottomNavigationState();
 }
 
-class _AppBottomNavigationState extends State<AppBottomNavigation> {
+class AppBottomNavigationState extends State<AppBottomNavigation> {
   void _onItemTapped(int index) {
     if (widget.currentIndex == index) return;
 
@@ -61,8 +59,10 @@ class _AppBottomNavigationState extends State<AppBottomNavigation> {
     } else if (index == 1) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (context) =>
-              const ContentListPage(title: 'スポット', collectionName: 'spots'),
+          builder: (context) => const content_list.ContentListPage(
+            title: 'スポット',
+            collectionName: 'spots',
+          ),
         ),
       );
     } else if (index == 2) {
@@ -72,15 +72,19 @@ class _AppBottomNavigationState extends State<AppBottomNavigation> {
     } else if (index == 3) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (context) =>
-              const ContentListPage(title: 'イベント', collectionName: 'events'),
+          builder: (context) => const content_list.ContentListPage(
+            title: 'イベント',
+            collectionName: 'events',
+          ),
         ),
       );
     } else if (index == 4) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (context) =>
-              const CourseListPage(title: 'モデルコース', collectionName: 'courses'),
+          builder: (context) => const course_list.CourseListPage(
+            title: 'モデルコース',
+            collectionName: 'courses',
+          ),
         ),
       );
     }
