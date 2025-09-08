@@ -32,7 +32,8 @@ Future<void> main() async {
           'https://storage.googleapis.com/mahargoyk-public-assets/spot_suma_beach.jpg',
       'hours': '24時間',
       'price': '無料',
-      'access': 'JR須磨駅から徒歩10分',
+      // 最初のスポットなので、アクセス情報はコースの起点からのもの
+      'access': 'JR須磨駅から徒歩【10分】',
     },
     {
       'title': '神戸市立須磨離宮公園',
@@ -44,7 +45,7 @@ Future<void> main() async {
           'https://storage.googleapis.com/mahargoyk-public-assets/spot_suma_rikyu_park.jpg',
       'hours': '9:00～17:00',
       'price': '大人 400円',
-      'access': 'バス停「離宮公園前」から徒歩5分',
+      'access': '徒歩【10分】→神戸市バス「須磨駅前」→「離宮公園前」【10分】→徒歩【5分】',
     },
     {
       'title': '須磨寺',
@@ -56,7 +57,7 @@ Future<void> main() async {
           'https://storage.googleapis.com/mahargoyk-public-assets/spot_suma_temple.jpg',
       'hours': '8:30～17:00',
       'price': '無料',
-      'access': '山陽須磨寺駅から徒歩5分',
+      'access': '徒歩【10分】',
     },
     {
       'title': '須磨浦山上遊園',
@@ -68,7 +69,7 @@ Future<void> main() async {
           'https://storage.googleapis.com/mahargoyk-public-assets/spot_sumaura_park.jpg',
       'hours': '10:00～17:00',
       'price': '往復料金 1,800円',
-      'access': '山陽須磨浦公園駅からすぐ',
+      'access': '徒歩【5分】→電車「須磨寺駅」→「須磨浦公園駅」【5分】',
     },
     {
       'title': '五色塚古墳',
@@ -80,7 +81,31 @@ Future<void> main() async {
           'https://storage.googleapis.com/mahargoyk-public-assets/spot_goshikizuka.jpg',
       'hours': '9:00～17:00',
       'price': '無料',
-      'access': '山陽霞ヶ丘駅から徒歩10分',
+      'access': '徒歩【5分】→電車「須磨浦公園駅」→「霞ヶ丘駅」【10分】→徒歩【10分】',
+    },
+    {
+      'title': '孫文記念館(移情閣)',
+      'description': '中国の革命家・孫文を記念する日本で唯一の博物館。国の重要文化財に指定されています。',
+      'address': '神戸市垂水区東舞子町2051',
+      'latitude': 34.630524,
+      'longitude': 135.035257,
+      'imageUrl':
+          'https://storage.googleapis.com/mahargoyk-public-assets/spot_sonbun_museum.jpg',
+      'hours': '10:00～17:00',
+      'price': '大人 300円',
+      'access': '徒歩【15分】',
+    },
+    {
+      'title': '舞子海上プロムナード',
+      'description': '明石海峡大橋の橋桁内に設置された展望施設。海上47mからの景色は迫力満点です。',
+      'address': '神戸市垂水区東舞子町2051',
+      'latitude': 34.631064,
+      'longitude': 135.034255,
+      'imageUrl':
+          'https://storage.googleapis.com/mahargoyk-public-assets/spot_maiko_promenade.jpg',
+      'hours': '9:00～18:00',
+      'price': '大人 250円',
+      'access': '徒歩【5分】',
     },
   ];
 
