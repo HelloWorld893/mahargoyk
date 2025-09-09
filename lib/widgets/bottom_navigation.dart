@@ -1,48 +1,16 @@
 // lib/widgets/bottom_navigation.dart
+
 import 'package:flutter/material.dart';
 import '../pages/home_page.dart';
+// ★★★ どのファイルからどのクラスをインポートするかを明確にする ★★★
+import '../pages/content_list_page.dart'; // ContentListPage をここから読み込む
+import '../pages/course_list_page.dart'; // CourseListPage をここから読み込む
+import '../pages/event_list_page.dart';
 import '../pages/map_page.dart';
-import '../pages/content_list_page.dart' as content_list;
-import '../pages/course_list_page.dart' as course_list;
-import '../pages/event_list_page.dart'; // 新しいイベント一覧ページをインポート
-
-class BottomNavigationItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const BottomNavigationItem({
-    super.key,
-    required this.icon,
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Icon(icon, color: isSelected ? Colors.amber[800] : Colors.black),
-          Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? Colors.amber[800] : Colors.black,
-              fontSize: 12,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class AppBottomNavigation extends StatefulWidget {
   final int currentIndex;
+
   const AppBottomNavigation({super.key, required this.currentIndex});
 
   @override
@@ -50,83 +18,92 @@ class AppBottomNavigation extends StatefulWidget {
 }
 
 class AppBottomNavigationState extends State<AppBottomNavigation> {
-  void _onItemTapped(int index) {
-    if (widget.currentIndex == index) return;
+  late int _selectedIndex;
 
-    if (index == 0) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const HomePage()),
-      );
-    } else if (index == 1) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => const content_list.ContentListPage(
-            title: 'スポット',
-            collectionName: 'spots',
+  @override
+  void initState() {
+    super.initState();
+    _selectedIndex = widget.currentIndex;
+  }
+
+  void _onItemTapped(int index) {
+    if (index == _selectedIndex) return;
+
+    setState(() {
+      _selectedIndex = index;
+    });
+
+    switch (index) {
+      case 0:
+        Navigator.of(context).pushReplacement(
+          PageRouteBuilder(
+            pageBuilder: (context, animation1, animation2) => const HomePage(),
+            transitionDuration: Duration.zero,
+            reverseTransitionDuration: Duration.zero,
           ),
-        ),
-      );
-    } else if (index == 2) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const MapPage()),
-      );
-    } else if (index == 3) {
-      // 「イベント」タブがタップされた時の処理
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => const EventListPage(), // 新しいEventListPageに遷移
-        ),
-      );
-    } else if (index == 4) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => const course_list.CourseListPage(
-            title: 'モデルコース',
-            collectionName: 'courses',
+        );
+        break;
+      case 1:
+        Navigator.of(context).pushReplacement(
+          PageRouteBuilder(
+            pageBuilder: (context, animation1, animation2) =>
+                const ContentListPage(title: 'スポット一覧', collectionName: 'spots'),
+            transitionDuration: Duration.zero,
+            reverseTransitionDuration: Duration.zero,
           ),
-        ),
-      );
+        );
+        break;
+      case 2:
+        Navigator.of(context).pushReplacement(
+          PageRouteBuilder(
+            pageBuilder: (context, animation1, animation2) =>
+                const CourseListPage(), // CourseListPageを正しく呼び出す
+            transitionDuration: Duration.zero,
+            reverseTransitionDuration: Duration.zero,
+          ),
+        );
+        break;
+      case 3:
+        Navigator.of(context).pushReplacement(
+          PageRouteBuilder(
+            pageBuilder: (context, animation1, animation2) =>
+                const EventListPage(),
+            transitionDuration: Duration.zero,
+            reverseTransitionDuration: Duration.zero,
+          ),
+        );
+        break;
+      case 4:
+        Navigator.of(context).pushReplacement(
+          PageRouteBuilder(
+            pageBuilder: (context, animation1, animation2) => const MapPage(),
+            transitionDuration: Duration.zero,
+            reverseTransitionDuration: Duration.zero,
+          ),
+        );
+        break;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return BottomAppBar(
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: <Widget>[
-          BottomNavigationItem(
-            icon: Icons.home,
-            label: 'ホーム',
-            isSelected: widget.currentIndex == 0,
-            onTap: () => _onItemTapped(0),
-          ),
-          BottomNavigationItem(
-            icon: Icons.attractions,
-            label: 'スポット',
-            isSelected: widget.currentIndex == 1,
-            onTap: () => _onItemTapped(1),
-          ),
-          BottomNavigationItem(
-            icon: Icons.location_on,
-            label: 'マップ',
-            isSelected: widget.currentIndex == 2,
-            onTap: () => _onItemTapped(2),
-          ),
-          BottomNavigationItem(
-            icon: Icons.event,
-            label: 'イベント',
-            isSelected: widget.currentIndex == 3,
-            onTap: () => _onItemTapped(3),
-          ),
-          BottomNavigationItem(
-            icon: Icons.map,
-            label: 'モデルコース',
-            isSelected: widget.currentIndex == 4,
-            onTap: () => _onItemTapped(4),
-          ),
-        ],
-      ),
+    return BottomNavigationBar(
+      items: const <BottomNavigationBarItem>[
+        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'ホーム'),
+        BottomNavigationBarItem(icon: Icon(Icons.place), label: 'スポット'),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.directions_walk),
+          label: 'モデルコース',
+        ),
+        BottomNavigationBarItem(icon: Icon(Icons.event), label: 'イベント'),
+        BottomNavigationBarItem(icon: Icon(Icons.map), label: 'マップ'),
+      ],
+      currentIndex: _selectedIndex,
+      selectedItemColor: Colors.amber[800],
+      unselectedItemColor: Colors.grey,
+      onTap: _onItemTapped,
+      type: BottomNavigationBarType.fixed,
+      showUnselectedLabels: true,
     );
   }
 }

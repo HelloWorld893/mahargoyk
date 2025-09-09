@@ -1,4 +1,3 @@
-// lib/pages/content_list_page.dart
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/content_item.dart';
@@ -132,54 +131,38 @@ class ContentListPageState extends State<ContentListPage> {
     );
   }
 
-  Widget _buildSpotCard(BuildContext context, ContentItem item) {
+  // GridViewで表示するためのカードWidget
+  Widget _buildImageCard(BuildContext context, ContentItem item) {
     return InkWell(
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(builder: (context) => SpotDetailPage(spot: item)),
         );
       },
+      borderRadius: BorderRadius.circular(12),
       child: Card(
         clipBehavior: Clip.antiAlias,
-        margin: const EdgeInsets.only(bottom: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             AspectRatio(
-              aspectRatio: 16 / 9,
+              aspectRatio: 4 / 3,
               child: Image.network(item.imageUrl, fit: BoxFit.cover),
             ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
+            Expanded(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                  child: Text(
                     item.title,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 20,
+                      fontSize: 16,
                     ),
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8.0,
-                    runSpacing: 4.0,
-                    children: [
-                      Chip(
-                        label: Text(item.area),
-                        backgroundColor: Colors.blue.shade100,
-                      ),
-                      ...item.themes.map(
-                        (theme) => Chip(
-                          label: Text(theme),
-                          backgroundColor: Colors.green.shade100,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                ),
               ),
             ),
           ],
@@ -261,12 +244,11 @@ class ContentListPageState extends State<ContentListPage> {
                         _searchText.toLowerCase(),
                       );
 
-                  // 選択されたジャンルが、スポットのテーマに「いずれか」含まれているかチェック
+                  // ★★★ 修正箇所: Firestoreのデータ構造に合わせて絞り込みロジックを変更 ★★★
+                  // 選択されたジャンルの中に、スポットのジャンルが含まれているかチェック
                   final matchesGenre =
                       activeGenreFilters.isEmpty ||
-                      activeGenreFilters.any(
-                        (genre) => item.themes.contains(genre),
-                      );
+                      activeGenreFilters.contains(item.genre);
 
                   // 選択されたエリアとスポットのエリアが一致するかチェック
                   final matchesArea =
@@ -281,10 +263,17 @@ class ContentListPageState extends State<ContentListPage> {
                     child: Center(child: Text('条件に合うスポットが見つかりませんでした。')),
                   );
                 }
-                return SliverList(
+
+                return SliverGrid(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    childAspectRatio: 1.2,
+                  ),
                   delegate: SliverChildBuilderDelegate((context, index) {
                     final item = ContentItem.fromFirestore(filteredDocs[index]);
-                    return _buildSpotCard(context, item);
+                    return _buildImageCard(context, item);
                   }, childCount: filteredDocs.length),
                 );
               },

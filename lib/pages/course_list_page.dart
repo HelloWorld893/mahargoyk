@@ -1,21 +1,12 @@
-// lib/pages/course_list_page.dart
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // ★★★ エラー修正箇所 ★★★
-import '../models/content_item.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/course_item.dart';
 import 'course_detail_page.dart';
 import '../widgets/bottom_navigation.dart';
 import '../widgets/header.dart';
-import '../services/firestore_service.dart';
 
 class CourseListPage extends StatefulWidget {
-  final String title;
-  final String collectionName;
-
-  const CourseListPage({
-    super.key,
-    required this.title,
-    required this.collectionName,
-  });
+  const CourseListPage({super.key});
 
   @override
   CourseListPageState createState() => CourseListPageState();
@@ -24,16 +15,20 @@ class CourseListPage extends StatefulWidget {
 class CourseListPageState extends State<CourseListPage> {
   final TextEditingController _searchController = TextEditingController();
   String _searchText = '';
-  final int _selectedIndex = 4;
-  final FirestoreService _firestoreService = FirestoreService();
+  int _selectedIndex = 0;
 
-  // フィルターのリスト
+  final Map<String, bool> _genreFilters = {
+    '観光': false,
+    'グルメ': false,
+    'ショッピング': false,
+    '自然': false,
+    '歴史': false,
+    'アート': false,
+    '夜景': false,
+    'B級グルメ': false,
+  };
+
   final Map<String, bool> _areaFilters = {
-    '北区': false,
-    'ウォーターフロント': false,
-    '六甲アイランド': false,
-    '花隈': false,
-    '新開地': false,
     '三宮・元町': false,
     '北野・新神戸': false,
     'メリケンパーク・ハーバーランド': false,
@@ -46,17 +41,6 @@ class CourseListPageState extends State<CourseListPage> {
     '西神・北神': false,
   };
 
-  final Map<String, bool> _themeFilters = {
-    '#アート': false,
-    '#グルメ': false,
-    '#ショッピング': false,
-    '#ロケ地めぐり': false,
-    '#体験': false,
-    '#歴史文化': false,
-    '#自然': false,
-    '#風景': false,
-  };
-
   @override
   void initState() {
     super.initState();
@@ -65,6 +49,7 @@ class CourseListPageState extends State<CourseListPage> {
         _searchText = _searchController.text;
       });
     });
+    _selectedIndex = 2;
   }
 
   @override
@@ -73,7 +58,6 @@ class CourseListPageState extends State<CourseListPage> {
     super.dispose();
   }
 
-  // フィルターセクションを構築するWidget
   Widget _buildFilterSection(String title, Map<String, bool> filterOptions) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -140,13 +124,12 @@ class CourseListPageState extends State<CourseListPage> {
     );
   }
 
-  // コースカードを構築するWidget
-  Widget _buildImageCard(BuildContext context, ContentItem item) {
+  Widget _buildImageCard(BuildContext context, CourseItem item) {
     return InkWell(
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => CourseDetailPage(courseId: item.id),
+            builder: (context) => CourseDetailPage(course: item),
           ),
         );
       },
@@ -208,8 +191,8 @@ class CourseListPageState extends State<CourseListPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
+                  _buildFilterSection('ジャンル', _genreFilters),
                   _buildFilterSection('エリア', _areaFilters),
-                  _buildFilterSection('テーマ', _themeFilters),
                   const Divider(),
                 ],
               ),
@@ -218,7 +201,9 @@ class CourseListPageState extends State<CourseListPage> {
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
             sliver: StreamBuilder<QuerySnapshot>(
-              stream: _firestoreService.getSpotData(widget.collectionName),
+              stream: FirebaseFirestore.instance
+                  .collection('courses')
+                  .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const SliverFillRemaining(
@@ -232,35 +217,35 @@ class CourseListPageState extends State<CourseListPage> {
                 }
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                   return const SliverFillRemaining(
-                    child: Center(child: Text('モデルコースが見つかりませんでした。')),
+                    child: Center(child: Text('データが見つかりませんでした。')),
                   );
                 }
 
-                final activeAreaFilters = _areaFilters.entries
+                final activeGenreFilters = _genreFilters.entries
                     .where((e) => e.value)
                     .map((e) => e.key)
                     .toList();
-                final activeThemeFilters = _themeFilters.entries
+                final activeAreaFilters = _areaFilters.entries
                     .where((e) => e.value)
                     .map((e) => e.key)
                     .toList();
 
                 var filteredDocs = snapshot.data!.docs.where((doc) {
-                  final item = ContentItem.fromFirestore(doc);
+                  final item = CourseItem.fromFirestore(doc);
                   final matchesText =
                       _searchText.isEmpty ||
                       item.title.toLowerCase().contains(
                         _searchText.toLowerCase(),
                       );
+                  final matchesGenre =
+                      activeGenreFilters.isEmpty ||
+                      activeGenreFilters.any(
+                        (genre) => item.genre.contains(genre),
+                      );
                   final matchesArea =
                       activeAreaFilters.isEmpty ||
                       activeAreaFilters.contains(item.area);
-                  final matchesTheme =
-                      activeThemeFilters.isEmpty ||
-                      activeThemeFilters.every(
-                        (theme) => item.themes.contains(theme),
-                      );
-                  return matchesText && matchesArea && matchesTheme;
+                  return matchesText && matchesGenre && matchesArea;
                 }).toList();
 
                 if (filteredDocs.isEmpty) {
@@ -277,7 +262,7 @@ class CourseListPageState extends State<CourseListPage> {
                     childAspectRatio: 1.2,
                   ),
                   delegate: SliverChildBuilderDelegate((context, index) {
-                    final item = ContentItem.fromFirestore(filteredDocs[index]);
+                    final item = CourseItem.fromFirestore(filteredDocs[index]);
                     return _buildImageCard(context, item);
                   }, childCount: filteredDocs.length),
                 );

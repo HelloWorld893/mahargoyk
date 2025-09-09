@@ -13,9 +13,9 @@ class ContentItem {
   final double latitude;
   final double longitude;
   final String area;
-  final List<String> themes;
-  final Timestamp? startDate; // イベント開始日を追加
-  final Timestamp? endDate; // イベント終了日を追加
+  final String genre; // ★★★ themes (List<String>) から genre (String) に変更 ★★★
+  final Timestamp? startDate;
+  final Timestamp? endDate;
 
   ContentItem({
     required this.id,
@@ -29,9 +29,9 @@ class ContentItem {
     required this.latitude,
     required this.longitude,
     required this.area,
-    required this.themes,
-    this.startDate, // コンストラクタに追加
-    this.endDate, // コンストラクタに追加
+    required this.genre, // ★★★ 変更 ★★★
+    this.startDate,
+    this.endDate,
   });
 
   factory ContentItem.fromFirestore(DocumentSnapshot doc) {
@@ -48,9 +48,10 @@ class ContentItem {
       latitude: (data['latitude'] ?? 0.0).toDouble(),
       longitude: (data['longitude'] ?? 0.0).toDouble(),
       area: data['area'] ?? '',
-      themes: List<String>.from(data['themes'] ?? []),
-      startDate: data['startDate'], // Firestoreから読み込む
-      endDate: data['endDate'], // Firestoreから読み込む
+      // ★★★ Firestoreの 'genre' フィールドから文字列として読み込むように変更 ★★★
+      genre: data['genre'] ?? '',
+      startDate: data['startDate'],
+      endDate: data['endDate'],
     );
   }
 }
