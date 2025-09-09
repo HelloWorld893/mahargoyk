@@ -129,7 +129,7 @@ class CourseListPageState extends State<CourseListPage> {
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => CourseDetailPage(course: item),
+            builder: (context) => CourseDetailPage(courseId: item.id),
           ),
         );
       },
@@ -232,19 +232,23 @@ class CourseListPageState extends State<CourseListPage> {
 
                 var filteredDocs = snapshot.data!.docs.where((doc) {
                   final item = CourseItem.fromFirestore(doc);
+
                   final matchesText =
                       _searchText.isEmpty ||
                       item.title.toLowerCase().contains(
                         _searchText.toLowerCase(),
                       );
+
                   final matchesGenre =
                       activeGenreFilters.isEmpty ||
                       activeGenreFilters.any(
                         (genre) => item.genre.contains(genre),
                       );
+
                   final matchesArea =
                       activeAreaFilters.isEmpty ||
                       activeAreaFilters.contains(item.area);
+
                   return matchesText && matchesGenre && matchesArea;
                 }).toList();
 

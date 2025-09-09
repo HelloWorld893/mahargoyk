@@ -34,6 +34,7 @@ dependencies:
   web: ^0.5.1
   # ★★★ バージョン競合を解決するために修正 ★★★
   intl: ^0.20.2
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:
