@@ -1,5 +1,4 @@
 // lib/models/content_item.dart
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ContentItem {
@@ -13,9 +12,10 @@ class ContentItem {
   final String price;
   final double latitude;
   final double longitude;
-  // ★★★ フィルター用のフィールドを追加 ★★★
   final String area;
   final List<String> themes;
+  final Timestamp? startDate; // イベント開始日を追加
+  final Timestamp? endDate; // イベント終了日を追加
 
   ContentItem({
     required this.id,
@@ -28,9 +28,10 @@ class ContentItem {
     required this.price,
     required this.latitude,
     required this.longitude,
-    // ★★★ コンストラクタにも追加 ★★★
     required this.area,
     required this.themes,
+    this.startDate, // コンストラクタに追加
+    this.endDate, // コンストラクタに追加
   });
 
   factory ContentItem.fromFirestore(DocumentSnapshot doc) {
@@ -46,9 +47,10 @@ class ContentItem {
       price: data['price'] ?? '',
       latitude: (data['latitude'] ?? 0.0).toDouble(),
       longitude: (data['longitude'] ?? 0.0).toDouble(),
-      // ★★★ Firestoreのデータから読み込むように追加 ★★★
       area: data['area'] ?? '',
       themes: List<String>.from(data['themes'] ?? []),
+      startDate: data['startDate'], // Firestoreから読み込む
+      endDate: data['endDate'], // Firestoreから読み込む
     );
   }
 }

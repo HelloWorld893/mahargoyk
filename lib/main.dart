@@ -1,11 +1,12 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'pages/home_page.dart';
 import 'pages/login_page.dart';
-import 'pages/registration_page.dart';
 
 void main() async {
+  // アプリ起動前の準備
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const MyApp());
@@ -22,13 +23,10 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      // ログイン状態に応じて表示するページを切り替える
-      initialRoute: '/',
-      routes: {
-        '/': (context) => const HomePage(), // ここをHomePageに変更
-        '/login': (context) => const LoginPage(),
-        '/register': (context) => const RegistrationPage(),
-      },
+      // アプリの最初のページをHomePageに設定
+      home: const HomePage(),
+      //他のページへの移動ルート
+      routes: {'/login': (context) => const LoginPage()},
     );
   }
 }

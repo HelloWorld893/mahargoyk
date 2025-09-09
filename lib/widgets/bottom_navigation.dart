@@ -1,9 +1,10 @@
+// lib/widgets/bottom_navigation.dart
 import 'package:flutter/material.dart';
 import '../pages/home_page.dart';
 import '../pages/map_page.dart';
-// 'as' を使ってファイルにユニークな名前を付ける
 import '../pages/content_list_page.dart' as content_list;
 import '../pages/course_list_page.dart' as course_list;
+import '../pages/event_list_page.dart'; // 新しいイベント一覧ページをインポート
 
 class BottomNavigationItem extends StatelessWidget {
   final IconData icon;
@@ -70,12 +71,10 @@ class AppBottomNavigationState extends State<AppBottomNavigation> {
         MaterialPageRoute(builder: (context) => const MapPage()),
       );
     } else if (index == 3) {
+      // 「イベント」タブがタップされた時の処理
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (context) => const content_list.ContentListPage(
-            title: 'イベント',
-            collectionName: 'events',
-          ),
+          builder: (context) => const EventListPage(), // 新しいEventListPageに遷移
         ),
       );
     } else if (index == 4) {

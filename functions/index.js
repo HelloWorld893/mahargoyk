@@ -1,114 +1,141 @@
+// functions/index.js
+
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
-const axios = require("axios");
-const cheerio = require("cheerio");
+const nodemailer = require("nodemailer");
 
-// Firebase Admin SDKの初期化
 admin.initializeApp();
-const firestore = admin.firestore();
+const db = admin.firestore();
 
-// 緯度・経度を取得する関数
-const getLatLng = async (address) => {
-  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURI(
-    address
-  )}&format=json`;
-  try {
-    const response = await axios.get(url, {
-      headers: { "User-Agent": "FirebaseScraper/1.0" },
-    });
-    if (response.data && response.data.length > 0) {
-      return {
-        latitude: parseFloat(response.data[0].lat),
-        longitude: parseFloat(response.data[0].lon),
-      };
-    }
-  } catch (e) {
-    console.error(`緯度経度の取得に失敗: ${address}, エラー: ${e.message}`);
+// Gmailの認証情報（環境変数に設定することを強く推奨します）
+// 例: firebase functions:config:set gmail.email="myemail@gmail.com" gmail.password="app-password"
+const gmailEmail = functions.config().gmail.email;
+const gmailPassword = functions.config().gmail.password;
+
+// Nodemailerのトランスポーターを設定
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: gmailEmail,
+    pass: gmailPassword,
+  },
+});
+
+/**
+ * 認証コードを生成し、メールで送信する関数
+ */
+exports.sendVerificationCode = functions.https.onCall(async (data, context) => {
+  const email = data.email;
+  if (!email) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "メールアドレスは必須です。"
+    );
   }
-  return null;
-};
 
-// HTTPリクエストに応じてスクレイピングを実行するCloud Function
-exports.scrapeKobeSpots = functions
-  .region("asia-northeast1") // 東京リージョンを指定
-  .https.onRequest(async (req, res) => {
-    console.log("Feel KOBEのスポット情報取得を開始します...");
-    const baseUrl = "https://www.feel-kobe.jp";
-    const listUrl = `${baseUrl}/facilities/`;
+  // 6桁のランダムな認証コードを生成
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = admin.firestore.Timestamp.fromMillis(
+    Date.now() + 10 * 60 * 1000 // 10分後に失効
+  );
+
+  // コードをFirestoreに保存
+  await db.collection("verificationCodes").doc(email).set({
+    code: code,
+    expiresAt: expiresAt,
+  });
+
+  // メールを送信
+  const mailOptions = {
+    from: `"Mahargoyk 運営" <${gmailEmail}>`,
+    to: email,
+    subject: "認証コード",
+    text: `あなたの認証コードは ${code} です。このコードは10分間有効です。`,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return { success: true };
+  } catch (error) {
+    console.error("メール送信エラー:", error);
+    throw new functions.https.HttpsError(
+      "internal",
+      "メールの送信に失敗しました。"
+    );
+  }
+});
+
+/**
+ * コードを検証し、ユーザーを新規登録する関数
+ */
+exports.verifyCodeAndRegister = functions.https.onCall(
+  async (data, context) => {
+    const email = data.email;
+    const code = data.code;
+    const password = data.password;
+
+    if (!email || !code || !password) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "メールアドレス、コード、パスワードは必須です。"
+      );
+    }
+
+    const docRef = db.collection("verificationCodes").doc(email);
+    const doc = await docRef.get();
+
+    if (!doc.exists) {
+      throw new functions.https.HttpsError(
+        "not-found",
+        "認証コードが見つかりません。"
+      );
+    }
+
+    const { code: savedCode, expiresAt } = doc.data();
+
+    if (expiresAt.toMillis() < Date.now()) {
+      throw new functions.https.HttpsError(
+        "deadline-exceeded",
+        "認証コードの有効期限が切れています。"
+      );
+    }
+
+    if (savedCode !== code) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "認証コードが正しくありません。"
+      );
+    }
 
     try {
-      // 1. 施設一覧ページを取得
-      const listResponse = await axios.get(listUrl);
-      const $list = cheerio.load(listResponse.data);
+      // Firebase Authenticationにユーザーを作成
+      const userRecord = await admin.auth().createUser({
+        email: email,
+        password: password,
+      });
 
-      // 2. 詳細ページへのリンク一覧を取得
-      const detailPageLinks = $list(".card > a")
-        .map((i, el) => $list(el).attr("href"))
-        .get();
+      // Firestoreにユーザー情報を保存
+      await db.collection("users").doc(userRecord.uid).set({
+        email: userRecord.email,
+        created_at: admin.firestore.FieldValue.serverTimestamp(),
+      });
 
-      console.log(`${detailPageLinks.length}件のスポットが見つかりました。`);
+      // 使用済みの認証コードを削除
+      await docRef.delete();
 
-      // 3. 各詳細ページを順番に処理
-      for (const link of detailPageLinks) {
-        if (!link) continue;
-
-        const detailUrl = `${baseUrl}${link}`;
-        const detailResponse = await axios.get(detailUrl);
-        const $detail = cheerio.load(detailResponse.data);
-
-        // --- サイトの構造に合わせて情報を抽出 ---
-        const title = $detail("h1").text().trim() || "タイトル不明";
-        const description =
-          $detail(".article > p").first().text().trim() || "説明なし";
-        let imageUrl = $detail(".article img").attr("src") || "";
-
-        let address = "住所不明";
-        let access = "アクセス情報なし";
-        let hours = "営業時間情報なし";
-        let price = "料金情報なし";
-
-        $detail("table tr").each((i, el) => {
-          const th = $detail(el).find("th").text().trim();
-          const td = $detail(el).find("td").text().trim();
-          if (th.includes("住所")) address = td;
-          if (th.includes("アクセス")) access = td;
-          if (th.includes("営業時間")) hours = td;
-          if (th.includes("料金")) price = td;
-        });
-        // --- 抽出ここまで ---
-
-        console.log(`▶︎ ${title} の情報を処理中...`);
-
-        // 4. 住所から緯度経度を取得
-        const latLng = await getLatLng(address);
-
-        // 5. Firestoreに保存するデータを作成
-        const spotData = {
-          title,
-          description,
-          address,
-          access,
-          hours,
-          price,
-          imageUrl: imageUrl.startsWith("http")
-            ? imageUrl
-            : `${baseUrl}${imageUrl}`,
-          latitude: latLng?.latitude ?? 0.0,
-          longitude: latLng?.longitude ?? 0.0,
-        };
-
-        // 6. Firestoreにデータを追加
-        await firestore.collection("spots").add(spotData);
-        console.log(`✅ ${title} のFirestoreへの登録成功`);
-
-        // 連続アクセスを避けるために1秒待つ
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-      }
-
-      console.log("すべての処理が完了しました。");
-      res.status(200).send("Scraping completed successfully!");
+      return { success: true, uid: userRecord.uid };
     } catch (error) {
-      console.error("エラーが発生しました:", error);
-      res.status(500).send("An error occurred during scraping.");
+      console.error("ユーザー作成エラー:", error);
+      if (error.code === "auth/email-already-exists") {
+        throw new functions.https.HttpsError(
+          "already-exists",
+          "このメールアドレスは既に使用されています。"
+        );
+      }
+      throw new functions.https.HttpsError(
+        "internal",
+        "ユーザー登録に失敗しました。"
+      );
     }
-  });
+  }
+);
