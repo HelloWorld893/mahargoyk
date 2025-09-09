@@ -1,12 +1,15 @@
+// lib/pages/course_detail_page.dart (修正版)
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:url_launcher/url_launcher.dart';
+// import 'package:url_launcher/url_launcher.dart'; // Google マップを開くために不要になったので削除
 import '../models/course_item.dart';
 import '../models/content_item.dart';
 import '../services/firestore_service.dart';
 import '../widgets/header.dart';
 import '../widgets/bottom_navigation.dart';
+import 'map_page.dart'; // ★★★ アプリ内マップページをインポート ★★★
 
 class CourseDetailPage extends StatefulWidget {
   final String courseId;
@@ -27,18 +30,14 @@ class CourseDetailPageState extends State<CourseDetailPage> {
     _courseFuture = _firestoreService.getCourseWithSpots(widget.courseId);
   }
 
-  // Googleマップアプリでスポットを開く
-  void _launchGoogleMaps(ContentItem spot) async {
-    final url =
-        'https://googleusercontent.com/maps/search/?api=1&query=${spot.latitude},${spot.longitude}';
-    if (await canLaunchUrl(Uri.parse(url))) {
-      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-    } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('マップアプリを開けませんでした。')));
-    }
+  // ★★★ spot_detail_page.dart を参考に、アプリ内マップを開く関数を新設 ★★★
+  void _navigateToMapPage(ContentItem spot) {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => MapPage(initialSpot: spot)));
   }
+
+  // --- (不要になった _launchGoogleMaps 関数は削除) ---
 
   // スポット間の移動案内を表示するWidget
   Widget _buildTransportLink(String accessInfo) {
@@ -154,9 +153,11 @@ class CourseDetailPageState extends State<CourseDetailPage> {
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: () => _launchGoogleMaps(spot),
+                // ★★★ ボタンの処理を新しい関数に変更 ★★★
+                onPressed: () => _navigateToMapPage(spot),
                 icon: const Icon(Icons.map),
-                label: const Text('マップで開く'),
+                // ★★★ ラベルを「マップで見る」に統一 ★★★
+                label: const Text('マップで見る'),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
@@ -187,59 +188,64 @@ class CourseDetailPageState extends State<CourseDetailPage> {
 
           final course = snapshot.data!;
 
-          return SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // コースのメイン画像
-                Image.network(
-                  course.imageUrl,
-                  fit: BoxFit.cover,
-                  height: 250,
-                  width: double.infinity,
-                ),
-                // コースのタイトルと説明
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        course.title,
-                        style: Theme.of(context).textTheme.headlineMedium
-                            ?.copyWith(fontWeight: FontWeight.bold),
+          return Center(
+            child: SizedBox(
+              width: 720,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // コースのメイン画像
+                    Image.network(
+                      course.imageUrl,
+                      fit: BoxFit.cover,
+                      height: 250,
+                      width: double.infinity,
+                    ),
+                    // コースのタイトルと説明
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            course.title,
+                            style: Theme.of(context).textTheme.headlineMedium
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            course.description,
+                            style: Theme.of(context).textTheme.bodyLarge,
+                          ),
+                          const Divider(height: 32),
+                        ],
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        course.description,
-                        style: Theme.of(context).textTheme.bodyLarge,
-                      ),
-                      const Divider(height: 32),
-                    ],
-                  ),
-                ),
-                // スポットリストを動的に生成
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: course.spots.length,
-                  itemBuilder: (context, index) {
-                    final spot = course.spots[index];
-                    return Column(
-                      children: [
-                        // 最初のスポット以外は、カードの前にアクセス情報を表示
-                        if (index > 0) _buildTransportLink(spot.access),
+                    ),
+                    // スポットリストを動的に生成
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: course.spots.length,
+                      itemBuilder: (context, index) {
+                        final spot = course.spots[index];
+                        return Column(
+                          children: [
+                            // 最初のスポット以外は、カードの前にアクセス情報を表示
+                            if (index > 0) _buildTransportLink(spot.access),
 
-                        _buildSpotCard(context, spot),
+                            _buildSpotCard(context, spot),
 
-                        // 最後のスポットの場合は下に余白を追加
-                        if (index == course.spots.length - 1)
-                          const SizedBox(height: 32),
-                      ],
-                    );
-                  },
+                            // 最後のスポットの場合は下に余白を追加
+                            if (index == course.spots.length - 1)
+                              const SizedBox(height: 32),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           );
         },

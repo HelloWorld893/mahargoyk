@@ -1,3 +1,5 @@
+// tool/upload_seaside_course.dart (修正版)
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mahargoyk/firebase_options.dart';
@@ -8,23 +10,9 @@ Future<void> main() async {
   final firestore = FirebaseFirestore.instance;
   print('Firebaseの初期化が完了しました。シーサイドコースの登録を開始します...');
 
-  // --- 1. 登録するコースの基本情報 ---
-  final courseData = {
-    'title': '気分爽快！神戸のシーサイドを満喫コース',
-    'description': '須磨から舞子まで、神戸の美しい海岸線を巡るコースです。歴史や絶景、グルメも楽しめます。',
-    'imageUrl':
-        'https://storage.googleapis.com/mahargoyk-public-assets/course_kobe_seaside.jpg',
-    // フィルター用の情報を追加
-    'area': '須磨・垂水',
-    'themes': ['#自然', '#風景', '#歴史文化'],
-  };
-
-  // --- 2. コースの情報を 'courses' コレクションに追加 ---
-  final courseRef = await firestore.collection('courses').add(courseData);
-  print('✅ コースを追加しました: ${courseRef.id}');
-
-  // --- 3. コースに含まれるスポットのリスト (Wordファイルから抽出) ---
-  final spots = [
+  // --- 1. コースに含まれるスポットのリスト ---
+  // 先に各スポットの情報を定義します
+  final spotsData = [
     {
       'title': '須磨海岸',
       'description': '白砂青松の美しい海岸線が続く、市民の憩いの場。夏は海水浴客で賑わいます。',
@@ -35,8 +23,9 @@ Future<void> main() async {
           'https://storage.googleapis.com/mahargoyk-public-assets/spot_suma_beach.jpg',
       'hours': '24時間',
       'price': '無料',
-      // 最初のスポットなので、コースの起点からのアクセス情報
       'access': 'JR須磨駅から徒歩【10分】',
+      'area': '須磨・垂水', // 該当エリア
+      'genre': '自然', // 該当ジャンル
     },
     {
       'title': '神戸市立須磨離宮公園',
@@ -49,6 +38,8 @@ Future<void> main() async {
       'hours': '9:00～17:00',
       'price': '大人 400円',
       'access': '徒歩【10分】→神戸市バス「須磨駅前」→「離宮公園前」【10分】→徒歩【5分】',
+      'area': '須磨・垂水',
+      'genre': '自然',
     },
     {
       'title': '須磨寺',
@@ -61,6 +52,8 @@ Future<void> main() async {
       'hours': '8:30～17:00',
       'price': '無料',
       'access': '徒歩【10分】',
+      'area': '須磨・垂水',
+      'genre': '歴史',
     },
     {
       'title': '須磨浦山上遊園',
@@ -73,6 +66,8 @@ Future<void> main() async {
       'hours': '10:00～17:00',
       'price': '往復料金 1,800円',
       'access': '徒歩【5分】→電車「須磨寺駅」→「須磨浦公園駅」【5分】',
+      'area': '須磨・垂水',
+      'genre': '観光',
     },
     {
       'title': '五色塚古墳',
@@ -85,6 +80,8 @@ Future<void> main() async {
       'hours': '9:00～17:00',
       'price': '無料',
       'access': '徒歩【5分】→電車「須磨浦公園駅」→「霞ヶ丘駅」【10分】→徒歩【10分】',
+      'area': '須磨・垂水',
+      'genre': '歴史',
     },
     {
       'title': '孫文記念館(移情閣)',
@@ -97,6 +94,8 @@ Future<void> main() async {
       'hours': '10:00～17:00',
       'price': '大人 300円',
       'access': '徒歩【15分】',
+      'area': '須磨・垂水',
+      'genre': '歴史',
     },
     {
       'title': '舞子海上プロムナード',
@@ -109,13 +108,55 @@ Future<void> main() async {
       'hours': '9:00～18:00',
       'price': '大人 250円',
       'access': '徒歩【5分】',
+      'area': '須磨・垂水',
+      'genre': '観光',
     },
   ];
 
-  // --- 4. 各スポットの情報をサブコレクション 'spots' に追加 ---
-  for (final spotData in spots) {
-    await courseRef.collection('spots').add(spotData);
-    print('  - スポットを追加しました: ${spotData['title']}');
+  // --- 2. 各スポットを 'spots' コレクションに追加し、参照をリストに保存 ---
+  final List<DocumentReference> spotRefs = [];
+  final spotsCollection = firestore.collection('spots');
+
+  for (final spotData in spotsData) {
+    // 同じタイトルのスポットが既に存在するか確認（重複登録を避けるため）
+    final existingSpot = await spotsCollection
+        .where('title', isEqualTo: spotData['title'])
+        .limit(1)
+        .get();
+    if (existingSpot.docs.isEmpty) {
+      final spotRef = await spotsCollection.add(spotData);
+      spotRefs.add(spotRef);
+      print('  - スポットを追加しました: ${spotData['title']}');
+    } else {
+      spotRefs.add(existingSpot.docs.first.reference);
+      print('  - 既存のスポットを使用します: ${spotData['title']}');
+    }
+  }
+
+  // --- 3. 登録するコースの基本情報 ---
+  // ★★★ 'themes' から 'genre' に変更し、スポットの参照リスト('spots')を追加 ★★★
+  final courseData = {
+    'title': '気分爽快！神戸のシーサイドを満喫コース',
+    'description': '須磨から舞子まで、神戸の美しい海岸線を巡るコースです。歴史や絶景、グルメも楽しめます。',
+    'imageUrl':
+        'https://storage.googleapis.com/mahargoyk-public-assets/course_kobe_seaside.jpg',
+    'area': '須磨・垂水',
+    'genre': ['自然', '観光', '歴史'], // アプリのフィルター項目に合わせたジャンル
+    'spots': spotRefs, // ★★★ ここでスポットの参照リストを追加 ★★★
+  };
+
+  // --- 4. コースの情報を 'courses' コレクションに追加 ---
+  // 同じタイトルのコースが既に存在するか確認
+  final existingCourse = await firestore
+      .collection('courses')
+      .where('title', isEqualTo: courseData['title'])
+      .limit(1)
+      .get();
+  if (existingCourse.docs.isEmpty) {
+    await firestore.collection('courses').add(courseData);
+    print('✅ コースを追加しました: ${courseData['title']}');
+  } else {
+    print('ℹ️ 同じ名前のコースが既に存在するため、追加をスキップしました: ${courseData['title']}');
   }
 
   print('🎉 すべてのデータの登録が完了しました。');
