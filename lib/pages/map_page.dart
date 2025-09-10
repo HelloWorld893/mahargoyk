@@ -32,7 +32,7 @@ class MapPageState extends State<MapPage> {
   bool _isRouteVisible = false;
   List<LatLng> _routePoints = [];
   bool _isZoomedIn = false;
-  final int _selectedIndex = 2;
+  final int _selectedIndex = 4;
   StreamSubscription<Position>? _positionSubscription;
   final FlutterTts flutterTts = FlutterTts();
   List<dynamic> _routeSteps = [];
