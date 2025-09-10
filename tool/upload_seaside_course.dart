@@ -1,4 +1,4 @@
-// tool/upload_kitano_course.dart
+// tool/upload_rural_course_reordered.dart
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -8,112 +8,93 @@ Future<void> main() async {
   // --- Firebaseの初期化 ---
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   final firestore = FirebaseFirestore.instance;
-  print('Firebaseの初期化が完了しました。北野異人館街コースの登録を開始します...');
+  print('Firebaseの初期化が完了しました。農村・里山コースの登録を開始します...');
 
-  // --- 1. コースに含まれるスポットのリスト ---
-  // 先に各スポットの情報を定義します
+  // --- 1. コースに含まれるスポットのリスト（指定された順番）---
   final spotsData = [
     {
-      'title': '神戸トリックアート不思議な領事館',
-      'description':
-          '明治後期に建築されパナマ領事館として使用されていた館。ヨーロッパで生まれたトリックアートが展示されており、神戸らしい作品も楽しめます。',
-      'address': '神戸市中央区北野町2-10-7',
-      'latitude': 34.700882,
-      'longitude': 135.190862,
+      'title': '弓削牧場',
+      'description': '市街地からわずか20分の自然豊かな牧場。自家加工の濃厚な牛乳やチーズが楽しめます。',
+      'address': '兵庫県神戸市北区山田町下谷上西丸山5-2',
+      'latitude': 34.746451,
+      'longitude': 135.173792,
       'imageUrl':
-          'https://storage.googleapis.com/mahargoyk-public-assets/spot_kobe_trick_art.jpg',
-      'hours': '10:00～17:00',
-      'price': '大人 880円',
-      'access': 'シティーループバス「北野異人館」下車すぐ',
-      'area': '北野・新神戸',
-      'genre': '体験',
+          'assets/images/Yuge_Farm.png',
+      'hours': '11:00～16:30', // チーズハウスヤルゴイ
+      'price': '〜3,000円',
+      'access': '神戸市営地下鉄 谷上駅から車で10分',
+      'area': '西神・北神',
+      'genre': 'グルメ, 自然',
     },
     {
-      'title': '英国館',
-      'description':
-          '明治42年築のコロニアル様式の洋館。2階にはシャーロック・ホームズの部屋が再現され、マントと帽子で記念撮影ができます。',
-      'address': '神戸市中央区北野町2-3-16',
-      'latitude': 34.700738,
-      'longitude': 135.191172,
+      'title': 'あいな里山公園',
+      'description': '四季折々の花や生き物に触れられる国営公園。茅葺きの建物や棚田など、昔ながらの日本の風景を感じられます。',
+      'address': '兵庫県神戸市北区山田町藍那字田代',
+      'latitude': 34.720188,
+      'longitude': 135.109012,
       'imageUrl':
-          'https://storage.googleapis.com/mahargoyk-public-assets/spot_british_house.jpg',
-      'hours': '10:00～17:00',
-      'price': '大人 880円',
-      'access': 'シティーループバス「北野異人館」下車すぐ',
-      'area': '北野・新神戸',
-      'genre': '歴史',
+          'assets/images/Aina_Satoyama_Park.png',
+      'hours': '9:30～17:00（時期により異なる）',
+      'price': '大人 450円',
+      'access': '神戸電鉄 藍那駅から徒歩すぐ',
+      'area': '西神・北神',
+      'genre': '自然, 観光',
     },
     {
-      'title': '北野外国人倶楽部',
-      'description':
-          '明治後期築の木造2階建ての館。重厚な家具や暖炉で当時の華やかな暮らしを再現。1日4組限定のドレス撮影体験も人気です（要予約）。',
-      'address': '神戸市中央区北野町2-18-2',
-      'latitude': 34.703078,
-      'longitude': 135.191351,
+      'title': '無動寺',
+      'description': '紅葉の名所として知られる古刹。境内には西国八十八箇所巡りの仏像があり、静かな時間を過ごせます。',
+      'address': '兵庫県神戸市北区山田町福地100',
+      'latitude': 34.770913,
+      'longitude': 135.137044,
       'imageUrl':
-          'https://storage.googleapis.com/mahargoyk-public-assets/spot_kitano_foreigners_club.jpg',
-      'hours': '10:00～17:00',
-      'price': '大人 550円',
-      'access': 'シティーループバス「北野異人館」から徒歩8分',
-      'area': '北野・新神戸',
-      'genre': '体験',
+          'assets/images/Mudo-ji_Temple.png',
+      'hours': '9:00～17:00',
+      'price': '大人 300円',
+      'access': '神戸電鉄 箕谷駅から徒歩約25分',
+      'area': '西神・北神',
+      'genre': '歴史, 自然',
     },
     {
-      'title': '香りの家オランダ館',
-      'description': '旧オランダ王国総領事邸。花の国オランダにちなみ、オリジナルの香水作り体験ができます。民族衣装での記念撮影も人気。',
-      'address': '神戸市中央区北野町2-15-10',
-      'latitude': 34.702188,
-      'longitude': 135.190648,
+      'title': '淡河宿本陣跡',
+      'description': '国の登録有形文化財に指定された、歴史ある本陣跡。現在ではカフェとして利用されており、古民家でゆっくりとくつろげます。',
+      'address': '兵庫県神戸市北区淡河町淡河792-1',
+      'latitude': 34.856944,
+      'longitude': 135.101389,
       'imageUrl':
-          'https://storage.googleapis.com/mahargoyk-public-assets/spot_netherlands_museum.jpg',
-      'hours': '10:00～17:00',
-      'price': '大人 700円',
-      'access': 'シティーループバス「北野異人館」から徒歩5分',
-      'area': '北野・新神戸',
-      'genre': '体験',
+          'assets/images/Ogo_Shuku_Honjin.png',
+      'hours': '11:30～15:30（ランチL.O.14:00）',
+      'price': '〜2,000円',
+      'access': '道の駅 淡河から徒歩3分',
+      'area': '西神・北神',
+      'genre': '歴史, グルメ',
     },
     {
-      'title': '風見鶏の館',
-      'description': 'レンガの外壁と尖塔の風見鶏がシンボルの、国指定重要文化財。北野異人館の象徴的存在として愛されています。',
-      'address': '神戸市中央区北野町3-13-3',
-      'latitude': 34.70119,
-      'longitude': 135.1906,
+      'title': '石峯寺',
+      'description': '国重要文化財に指定された仏像や、境内の鐘楼が魅力。紅葉の時期には多くの人が訪れます。',
+      'address': '兵庫県神戸市北区淡河町神影110-1',
+      'latitude': 34.832539,
+      'longitude': 135.137309,
       'imageUrl':
-          'https://storage.googleapis.com/mahargoyk-public-assets/spot_weathercock_house.jpg',
-      'hours': '9:00～18:00',
-      'price': '大人 500円',
-      'access': '各線三宮駅から徒歩約15分',
-      'area': '北野・新神戸',
-      'genre': '歴史',
+          'assets/images/Shakubuji_Temple.png',
+      'hours': '常時開放',
+      'price': '無料',
+      'access': '神戸電鉄 岡場駅からバス',
+      'area': '西神・北神',
+      'genre': '歴史, 自然',
     },
     {
-      'title': '萌黄の館',
-      'description': '淡いグリーンの外壁が特徴的な国指定重要文化財の異人館。2階のサンルームからは神戸の美しい街並みが楽しめます。',
-      'address': '神戸市中央区北野町3-10-11',
-      'latitude': 34.700977,
-      'longitude': 135.189255,
+      'title': '道の駅「神戸フルーツ・フラワーパーク大沢」',
+      'description': '神戸の農産物や土産物が揃う道の駅。四季の花々が咲き誇り、遊園地やホテルも併設されています。',
+      'address': '兵庫県神戸市北区大沢町上大沢2150',
+      'latitude': 34.848861,
+      'longitude': 135.1911154,
       'imageUrl':
-          'https://storage.googleapis.com/mahargoyk-public-assets/spot_moegi_house.jpg',
-      'hours': '9:30～18:00',
-      'price': '大人 400円',
-      'access': '各線三宮駅から徒歩約15分',
-      'area': '北野・新神戸',
-      'genre': '歴史',
-    },
-    {
-      'title': '神戸北野ノスタ',
-      'description':
-          '旧北野小学校をリノベーションした複合施設。レストラン、カフェ、スイーツ店などがあり、食事や休憩、お土産探しに最適です。',
-      'address': '神戸市中央区中山手通3丁目17-1',
-      'latitude': 34.695531,
-      'longitude': 135.187026,
-      'imageUrl':
-          'https://storage.googleapis.com/mahargoyk-public-assets/spot_kitano_nosta.jpg',
-      'hours': '店舗による',
-      'price': '無料（施設内店舗は有料）',
-      'access': '北野町広場から徒歩10分',
-      'area': '北野・新神戸',
-      'genre': 'グルメ',
+          'assets/images/fruit_michinoeki.png',
+      'hours': '10:00～20:00（施設により異なる）',
+      'price': '無料（一部施設を除く）',
+      'access': '六甲北有料道路 大沢IC降りてすぐ',
+      'area': '西神・北神',
+      'genre': 'グルメ, 観光',
     },
   ];
 
@@ -122,7 +103,6 @@ Future<void> main() async {
   final spotsCollection = firestore.collection('spots');
 
   for (final spotData in spotsData) {
-    // 同じタイトルのスポットが既に存在するか確認（重複登録を避けるため）
     final existingSpot = await spotsCollection
         .where('title', isEqualTo: spotData['title'])
         .limit(1)
@@ -139,17 +119,16 @@ Future<void> main() async {
 
   // --- 3. 登録するコースの基本情報 ---
   final courseData = {
-    'title': '神戸北野異人館街で異文化体験！大満足の半日観光コース',
-    'description': '神戸の開港後に栄えた異国情緒あふれるエリアで、トリックアートやドレス体験、香水作りなど、思い出に残る体験ができます。',
+    'title': '都心部からわずか30分！神戸の「農村・里山」で癒され旅',
+    'description': '都会の喧騒を離れ、自然豊かな農村・里山の風景を巡り、心と体を癒すコースです。',
     'imageUrl':
-        'https://storage.googleapis.com/mahargoyk-public-assets/course_kobe_kitano.jpg',
-    'area': '北野・新神戸',
-    'genre': ['観光', '歴史', '体験'],
+        'assets/images/Ogo_inaka.png',
+    'area': '西神・北神',
+    'genre': ['自然', '観光', '歴史'],
     'spots': spotRefs,
   };
 
   // --- 4. コースの情報を 'courses' コレクションに追加 ---
-  // 同じタイトルのコースが既に存在するか確認
   final existingCourse = await firestore
       .collection('courses')
       .where('title', isEqualTo: courseData['title'])
