@@ -7,6 +7,7 @@ import '../pages/content_list_page.dart'; // ContentListPage をここから読�
 import '../pages/course_list_page.dart'; // CourseListPage をここから読み込む
 import '../pages/event_list_page.dart';
 import '../pages/map_page.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class AppBottomNavigation extends StatefulWidget {
   final int currentIndex;
@@ -26,13 +27,14 @@ class AppBottomNavigationState extends State<AppBottomNavigation> {
     _selectedIndex = widget.currentIndex;
   }
 
-  void _onItemTapped(int index) {
+  void _onItemTapped(int index) async {
     if (index == _selectedIndex) return;
 
+if (index != 4 && index != 5) {
     setState(() {
       _selectedIndex = index;
     });
-
+  }
     switch (index) {
       case 0:
         Navigator.of(context).pushReplacement(
@@ -82,6 +84,42 @@ class AppBottomNavigationState extends State<AppBottomNavigation> {
           ),
         );
         break;
+case 5: // チケット
+  const url = 'https://app.surutto-qrtto.com/tabs/home';
+  final uri = Uri.parse(url);
+
+  final shouldLaunch = await showDialog<bool>(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: const Text('外部サイトへ移動'),
+        content: const Text('https://app.surutto-qrtto.com/（外部サイト）を開きます。よろしいですか？'),
+        actions: <Widget>[
+          TextButton(
+            child: const Text('キャンセル'),
+            onPressed: () => Navigator.of(context).pop(false),
+          ),
+          TextButton(
+            child: const Text('OK'),
+            onPressed: () => Navigator.of(context).pop(true),
+          ),
+        ],
+      );
+    },
+  );
+
+  if (shouldLaunch == true) {
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('URLを開けませんでした')),
+      );
+    }
+  }
+
+  break;
+
     }
   }
 
@@ -97,6 +135,7 @@ class AppBottomNavigationState extends State<AppBottomNavigation> {
         ),
         BottomNavigationBarItem(icon: Icon(Icons.event), label: 'イベント'),
         BottomNavigationBarItem(icon: Icon(Icons.map), label: 'マップ'),
+        BottomNavigationBarItem(icon: Icon(Icons.confirmation_num), label: 'チケット'),
       ],
       currentIndex: _selectedIndex,
       selectedItemColor: Colors.amber[800],
