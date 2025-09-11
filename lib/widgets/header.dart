@@ -1,6 +1,9 @@
+// lib/widgets/header.dart
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../pages/login_page.dart';
+import '../pages/favorites_page.dart'; // お気に入りページをインポート
 
 class AppHeader extends StatefulWidget implements PreferredSizeWidget {
   const AppHeader({Key? key}) : super(key: key);
@@ -45,8 +48,11 @@ class _AppHeaderState extends State<AppHeader> {
               tooltip: 'お気に入り',
               onPressed: () {
                 if (_user != null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('お気に入り機能は現在開発中です')),
+                  // ★★★ ログイン時にお気に入りページへ遷移 ★★★
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const FavoritesPage(),
+                    ),
                   );
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -73,9 +79,8 @@ class _AppHeaderState extends State<AppHeader> {
             if (_user != null) // ログイン済みの場合
               PopupMenuButton<String>(
                 offset: const Offset(0, kToolbarHeight),
-                // ここでradiusを指定して大きさを変更
                 icon: const CircleAvatar(
-                  radius: 16.0, // 例として15.0を設定
+                  radius: 16.0,
                   backgroundColor: Colors.black,
                   child: Icon(Icons.person, color: Colors.white),
                 ),

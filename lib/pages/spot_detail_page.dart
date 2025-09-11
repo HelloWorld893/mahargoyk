@@ -3,27 +3,28 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/content_item.dart';
-import '../widgets/header.dart'; // AppHeaderをインポート
-import 'map_page.dart'; // MapPageをインポート
+import '../services/firestore_service.dart';
+import '../widgets/header.dart';
+import 'map_page.dart';
 
 class SpotDetailPage extends StatefulWidget {
   final ContentItem spot;
 
-  // use_super_parameters の修正
   const SpotDetailPage({super.key, required this.spot});
 
   @override
-  // library_private_types_in_public_api の修正
   SpotDetailPageState createState() => SpotDetailPageState();
 }
 
-// library_private_types_in_public_api の修正
 class SpotDetailPageState extends State<SpotDetailPage> {
   LatLng? _userLocation;
   String? _distanceText;
   final MapController _mapController = MapController();
   late LatLng spotLocation;
+  final FirestoreService _firestoreService = FirestoreService();
+  final User? _user = FirebaseAuth.instance.currentUser;
 
   @override
   void initState() {
@@ -77,12 +78,10 @@ class SpotDetailPageState extends State<SpotDetailPage> {
         });
       }
     } catch (e) {
-      // avoid_print の修正
       debugPrint(e.toString());
     }
   }
 
-  // マップ画面に遷移するメソッド
   void _navigateToMap() {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -116,9 +115,51 @@ class SpotDetailPageState extends State<SpotDetailPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Text(
-                        widget.spot.title,
-                        style: Theme.of(context).textTheme.headlineMedium,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              widget.spot.title,
+                              style: Theme.of(context).textTheme.headlineMedium,
+                            ),
+                          ),
+                          if (_user != null)
+                            StreamBuilder<bool>(
+                              stream: _firestoreService.isFavorite(
+                                'spots',
+                                widget.spot.id,
+                              ),
+                              builder: (context, snapshot) {
+                                final isFavorited = snapshot.data ?? false;
+                                return IconButton(
+                                  icon: Icon(
+                                    isFavorited
+                                        ? Icons.favorite
+                                        : Icons.favorite_border,
+                                    color: isFavorited
+                                        ? Colors.red
+                                        : Colors.grey,
+                                    size: 30,
+                                  ),
+                                  onPressed: () {
+                                    if (isFavorited) {
+                                      _firestoreService.removeFavorite(
+                                        'spots',
+                                        widget.spot.id,
+                                      );
+                                    } else {
+                                      _firestoreService.addFavorite(
+                                        'spots',
+                                        widget.spot.id,
+                                      );
+                                    }
+                                  },
+                                );
+                              },
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 16),
                       Text(
@@ -230,7 +271,7 @@ class SpotDetailPageState extends State<SpotDetailPage> {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
-                          onPressed: _navigateToMap, // ここを修正
+                          onPressed: _navigateToMap,
                           icon: const Icon(Icons.map, color: Colors.white),
                           label: const Text(
                             'マップを見る',

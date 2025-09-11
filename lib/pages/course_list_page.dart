@@ -17,6 +17,10 @@ class CourseListPageState extends State<CourseListPage> {
   String _searchText = '';
   int _selectedIndex = 0;
 
+  // ★★★ 状態管理をページ番号方式に変更 ★★★
+  int _currentPage = 1;
+  final int _itemsPerPage = 12;
+
   final Map<String, bool> _genreFilters = {
     '観光': false,
     'グルメ': false,
@@ -47,6 +51,7 @@ class CourseListPageState extends State<CourseListPage> {
     _searchController.addListener(() {
       setState(() {
         _searchText = _searchController.text;
+        _currentPage = 1;
       });
     });
     _selectedIndex = 2;
@@ -56,6 +61,70 @@ class CourseListPageState extends State<CourseListPage> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  // ★★★ ページネーションコントロールを構築するウィジェット ★★★
+  Widget _buildPaginationControls(int totalPages) {
+    if (totalPages <= 1) return const SizedBox.shrink();
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        IconButton(
+          icon: const Icon(Icons.arrow_back_ios, size: 16),
+          onPressed: _currentPage > 1
+              ? () => setState(() {
+                  _currentPage--;
+                })
+              : null,
+        ),
+        ...List.generate(totalPages, (index) {
+          final page = index + 1;
+          return Container(
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            child: TextButton(
+              onPressed: () => setState(() {
+                _currentPage = page;
+              }),
+              style: TextButton.styleFrom(
+                minimumSize: const Size(36, 36),
+                padding: EdgeInsets.zero,
+                backgroundColor: _currentPage == page
+                    ? Colors.blue[50]
+                    : Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
+                  side: BorderSide(
+                    color: _currentPage == page
+                        ? Colors.blueAccent
+                        : Colors.grey.shade300,
+                  ),
+                ),
+              ),
+              child: Text(
+                '$page',
+                style: TextStyle(
+                  color: _currentPage == page
+                      ? Colors.blueAccent
+                      : Colors.black87,
+                  fontWeight: _currentPage == page
+                      ? FontWeight.bold
+                      : FontWeight.normal,
+                ),
+              ),
+            ),
+          );
+        }),
+        IconButton(
+          icon: const Icon(Icons.arrow_forward_ios, size: 16),
+          onPressed: _currentPage < totalPages
+              ? () => setState(() {
+                  _currentPage++;
+                })
+              : null,
+        ),
+      ],
+    );
   }
 
   Widget _buildFilterSection(String title, Map<String, bool> filterOptions) {
@@ -80,6 +149,7 @@ class CourseListPageState extends State<CourseListPage> {
               onTap: () {
                 setState(() {
                   filterOptions[key] = !filterOptions[key]!;
+                  _currentPage = 1;
                 });
               },
               borderRadius: BorderRadius.circular(4),
@@ -102,6 +172,7 @@ class CourseListPageState extends State<CourseListPage> {
                         onChanged: (bool? value) {
                           setState(() {
                             filterOptions[key] = value!;
+                            _currentPage = 1;
                           });
                         },
                       ),
@@ -198,80 +269,101 @@ class CourseListPageState extends State<CourseListPage> {
               ),
             ),
           ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
-            sliver: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('courses')
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const SliverFillRemaining(
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                }
-                if (snapshot.hasError) {
-                  return SliverFillRemaining(
-                    child: Center(child: Text('エラー: ${snapshot.error}')),
-                  );
-                }
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const SliverFillRemaining(
-                    child: Center(child: Text('データが見つかりませんでした。')),
-                  );
-                }
-
-                final activeGenreFilters = _genreFilters.entries
-                    .where((e) => e.value)
-                    .map((e) => e.key)
-                    .toList();
-                final activeAreaFilters = _areaFilters.entries
-                    .where((e) => e.value)
-                    .map((e) => e.key)
-                    .toList();
-
-                var filteredDocs = snapshot.data!.docs.where((doc) {
-                  final item = CourseItem.fromFirestore(doc);
-
-                  final matchesText =
-                      _searchText.isEmpty ||
-                      item.title.toLowerCase().contains(
-                        _searchText.toLowerCase(),
-                      );
-
-                  final matchesGenre =
-                      activeGenreFilters.isEmpty ||
-                      activeGenreFilters.any(
-                        (genre) => item.genre.contains(genre),
-                      );
-
-                  final matchesArea =
-                      activeAreaFilters.isEmpty ||
-                      activeAreaFilters.contains(item.area);
-
-                  return matchesText && matchesGenre && matchesArea;
-                }).toList();
-
-                if (filteredDocs.isEmpty) {
-                  return const SliverFillRemaining(
-                    child: Center(child: Text('条件に合うコースが見つかりませんでした。')),
-                  );
-                }
-
-                return SliverGrid(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: 1.2,
-                  ),
-                  delegate: SliverChildBuilderDelegate((context, index) {
-                    final item = CourseItem.fromFirestore(filteredDocs[index]);
-                    return _buildImageCard(context, item);
-                  }, childCount: filteredDocs.length),
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('courses')
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const SliverFillRemaining(
+                  child: Center(child: CircularProgressIndicator()),
                 );
-              },
-            ),
+              }
+              if (snapshot.hasError) {
+                return SliverFillRemaining(
+                  child: Center(child: Text('エラー: ${snapshot.error}')),
+                );
+              }
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return const SliverFillRemaining(
+                  child: Center(child: Text('データが見つかりませんでした。')),
+                );
+              }
+
+              final activeGenreFilters = _genreFilters.entries
+                  .where((e) => e.value)
+                  .map((e) => e.key)
+                  .toList();
+              final activeAreaFilters = _areaFilters.entries
+                  .where((e) => e.value)
+                  .map((e) => e.key)
+                  .toList();
+
+              var filteredDocs = snapshot.data!.docs.where((doc) {
+                final item = CourseItem.fromFirestore(doc);
+                final matchesText =
+                    _searchText.isEmpty ||
+                    item.title.toLowerCase().contains(
+                      _searchText.toLowerCase(),
+                    );
+                final matchesGenre =
+                    activeGenreFilters.isEmpty ||
+                    activeGenreFilters.any(
+                      (genre) => item.genre.contains(genre),
+                    );
+                final matchesArea =
+                    activeAreaFilters.isEmpty ||
+                    activeAreaFilters.contains(item.area);
+
+                return matchesText && matchesGenre && matchesArea;
+              }).toList();
+
+              if (filteredDocs.isEmpty) {
+                return const SliverFillRemaining(
+                  child: Center(child: Text('条件に合うコースが見つかりませんでした。')),
+                );
+              }
+
+              // ★★★ ページネーションのための計算 ★★★
+              final totalItems = filteredDocs.length;
+              final totalPages = (totalItems / _itemsPerPage).ceil();
+              final startIndex = (_currentPage - 1) * _itemsPerPage;
+              final endIndex = (startIndex + _itemsPerPage).clamp(
+                0,
+                totalItems,
+              );
+              final displayedDocs = filteredDocs.sublist(startIndex, endIndex);
+
+              return SliverMainAxisGroup(
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
+                    sliver: SliverGrid(
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                            childAspectRatio: 1.2,
+                          ),
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final item = CourseItem.fromFirestore(
+                          displayedDocs[index],
+                        );
+                        return _buildImageCard(context, item);
+                      }, childCount: displayedDocs.length),
+                    ),
+                  ),
+                  // ★★★ ページネーションコントロールを表示 ★★★
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                      child: _buildPaginationControls(totalPages),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),

@@ -22,6 +22,10 @@ class _EventListPageState extends State<EventListPage> {
   DateTime? _appliedEndDate;
   String? _appliedArea;
 
+  // ★★★ 状態管理をページ番号方式に変更 ★★★
+  int _currentPage = 1;
+  final int _itemsPerPage = 12;
+
   final List<String> _areaOptions = const [
     'すべてのエリア',
     '三宮・元町',
@@ -73,7 +77,9 @@ class _EventListPageState extends State<EventListPage> {
     setState(() {
       _appliedStartDate = _selectedStartDate;
       _appliedEndDate = _selectedEndDate;
-      _appliedArea = _selectedArea == 'すべてのエリア' ? null : _appliedArea;
+      _appliedArea = _selectedArea == 'すべてのエリア' ? null : _selectedArea;
+      // ★★★ フィルター適用時に1ページ目に戻す ★★★
+      _currentPage = 1;
     });
   }
 
@@ -96,6 +102,70 @@ class _EventListPageState extends State<EventListPage> {
     if (now.isAfter(startDate) && now.isBefore(inclusiveEndDate)) return '開催中';
     if (now.isBefore(startDate)) return '開催前';
     return '終了';
+  }
+
+  // ★★★ ページネーションコントロールを構築するウィジェット ★★★
+  Widget _buildPaginationControls(int totalPages) {
+    if (totalPages <= 1) return const SizedBox.shrink();
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        IconButton(
+          icon: const Icon(Icons.arrow_back_ios, size: 16),
+          onPressed: _currentPage > 1
+              ? () => setState(() {
+                  _currentPage--;
+                })
+              : null,
+        ),
+        ...List.generate(totalPages, (index) {
+          final page = index + 1;
+          return Container(
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            child: TextButton(
+              onPressed: () => setState(() {
+                _currentPage = page;
+              }),
+              style: TextButton.styleFrom(
+                minimumSize: const Size(36, 36),
+                padding: EdgeInsets.zero,
+                backgroundColor: _currentPage == page
+                    ? Colors.blue[50]
+                    : Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
+                  side: BorderSide(
+                    color: _currentPage == page
+                        ? Colors.blueAccent
+                        : Colors.grey.shade300,
+                  ),
+                ),
+              ),
+              child: Text(
+                '$page',
+                style: TextStyle(
+                  color: _currentPage == page
+                      ? Colors.blueAccent
+                      : Colors.black87,
+                  fontWeight: _currentPage == page
+                      ? FontWeight.bold
+                      : FontWeight.normal,
+                ),
+              ),
+            ),
+          );
+        }),
+        IconButton(
+          icon: const Icon(Icons.arrow_forward_ios, size: 16),
+          onPressed: _currentPage < totalPages
+              ? () => setState(() {
+                  _currentPage++;
+                })
+              : null,
+        ),
+      ],
+    );
   }
 
   @override
@@ -196,6 +266,16 @@ class _EventListPageState extends State<EventListPage> {
                 );
               }
 
+              // ★★★ ページネーションのための計算 ★★★
+              final totalItems = filteredDocs.length;
+              final totalPages = (totalItems / _itemsPerPage).ceil();
+              final startIndex = (_currentPage - 1) * _itemsPerPage;
+              final endIndex = (startIndex + _itemsPerPage).clamp(
+                0,
+                totalItems,
+              );
+              final displayedDocs = filteredDocs.sublist(startIndex, endIndex);
+
               return SliverMainAxisGroup(
                 slivers: [
                   SliverToBoxAdapter(
@@ -215,14 +295,21 @@ class _EventListPageState extends State<EventListPage> {
                             crossAxisCount: 3,
                             crossAxisSpacing: 16,
                             mainAxisSpacing: 16,
-                            childAspectRatio: 1, // カード全体の比率
+                            childAspectRatio: 1,
                           ),
                       delegate: SliverChildBuilderDelegate((context, index) {
                         final item = ContentItem.fromFirestore(
-                          filteredDocs[index],
+                          displayedDocs[index],
                         );
                         return _buildEventCard(item);
-                      }, childCount: filteredDocs.length),
+                      }, childCount: displayedDocs.length),
+                    ),
+                  ),
+                  // ★★★ ページネーションコントロールを表示 ★★★
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                      child: _buildPaginationControls(totalPages),
                     ),
                   ),
                 ],
@@ -291,7 +378,6 @@ class _EventListPageState extends State<EventListPage> {
     );
   }
 
-  // ★★★ 画像の比率を4:3に固定するように修正 ★★★
   Widget _buildEventCard(ContentItem item) {
     final status = _getEventStatus(item);
     return InkWell(
@@ -307,7 +393,6 @@ class _EventListPageState extends State<EventListPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // AspectRatioで画像の比率を4:3に固定
             AspectRatio(
               aspectRatio: 4 / 3,
               child: Stack(
@@ -344,7 +429,6 @@ class _EventListPageState extends State<EventListPage> {
                 ],
               ),
             ),
-            // 残りのスペースをテキスト表示に使う
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(8.0),

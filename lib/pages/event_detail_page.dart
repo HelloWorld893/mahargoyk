@@ -4,19 +4,31 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:mahargoyk/models/content_item.dart';
-import 'package:mahargoyk/widgets/bottom_navigation.dart';
-import 'package:mahargoyk/widgets/header.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../models/content_item.dart';
+import '../services/firestore_service.dart';
+import '../widgets/bottom_navigation.dart';
+import '../widgets/header.dart';
 import 'map_page.dart';
 
-class EventDetailPage extends StatelessWidget {
+class EventDetailPage extends StatefulWidget {
   final ContentItem event;
 
   const EventDetailPage({super.key, required this.event});
 
+  @override
+  State<EventDetailPage> createState() => _EventDetailPageState();
+}
+
+class _EventDetailPageState extends State<EventDetailPage> {
+  final FirestoreService _firestoreService = FirestoreService();
+  final User? _user = FirebaseAuth.instance.currentUser;
+
   void _navigateToMap(BuildContext context) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => MapPage(initialSpot: event)),
+      MaterialPageRoute(
+        builder: (context) => MapPage(initialSpot: widget.event),
+      ),
     );
   }
 
@@ -27,9 +39,9 @@ class EventDetailPage extends StatelessWidget {
       return DateFormat('yyyy年M月d日').format(date);
     }
 
-    final startDate = event.startDate?.toDate();
-    final endDate = event.endDate?.toDate();
-    final eventLocation = LatLng(event.latitude, event.longitude);
+    final startDate = widget.event.startDate?.toDate();
+    final endDate = widget.event.endDate?.toDate();
+    final eventLocation = LatLng(widget.event.latitude, widget.event.longitude);
 
     String periodText;
     if (startDate != null && endDate != null) {
@@ -51,17 +63,15 @@ class EventDetailPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // メイン画像
-                if (event.imageUrl.isNotEmpty)
-                  // ★★★ AspectRatioとAlignを追加して画像を中央揃え4:3に ★★★
+                if (widget.event.imageUrl.isNotEmpty)
                   Align(
                     alignment: Alignment.center,
                     child: AspectRatio(
                       aspectRatio: 4 / 3,
                       child: Image.network(
-                        event.imageUrl,
+                        widget.event.imageUrl,
                         width: double.infinity,
-                        height: 250, // AspectRatioがあるのでheightは実質無効になります
+                        height: 250,
                         fit: BoxFit.cover,
                       ),
                     ),
@@ -74,15 +84,54 @@ class EventDetailPage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // イベントタイトル
-                      Text(
-                        event.title,
-                        style: Theme.of(context).textTheme.headlineMedium
-                            ?.copyWith(fontWeight: FontWeight.bold),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              widget.event.title,
+                              style: Theme.of(context).textTheme.headlineMedium
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          if (_user != null)
+                            StreamBuilder<bool>(
+                              stream: _firestoreService.isFavorite(
+                                'events',
+                                widget.event.id,
+                              ),
+                              builder: (context, snapshot) {
+                                final isFavorited = snapshot.data ?? false;
+                                return IconButton(
+                                  icon: Icon(
+                                    isFavorited
+                                        ? Icons.favorite
+                                        : Icons.favorite_border,
+                                    color: isFavorited
+                                        ? Colors.red
+                                        : Colors.grey,
+                                    size: 30,
+                                  ),
+                                  onPressed: () {
+                                    if (isFavorited) {
+                                      _firestoreService.removeFavorite(
+                                        'events',
+                                        widget.event.id,
+                                      );
+                                    } else {
+                                      _firestoreService.addFavorite(
+                                        'events',
+                                        widget.event.id,
+                                      );
+                                    }
+                                  },
+                                );
+                              },
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 24),
-
-                      // イベント基本情報セクション
                       _buildInfoSection(
                         context,
                         icon: Icons.calendar_today,
@@ -93,26 +142,24 @@ class EventDetailPage extends StatelessWidget {
                         context,
                         icon: Icons.access_time,
                         title: '開催時間',
-                        content: event.hours,
+                        content: widget.event.hours,
                       ),
                       _buildInfoSection(
                         context,
                         icon: Icons.local_attraction,
                         title: '料金',
-                        content: event.price,
+                        content: widget.event.price,
                       ),
                       const SizedBox(height: 16),
                       const Divider(),
                       const SizedBox(height: 16),
-
-                      // イベント説明
                       Text(
                         'イベント詳細',
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        event.description,
+                        widget.event.description,
                         style: Theme.of(
                           context,
                         ).textTheme.bodyMedium?.copyWith(height: 1.6),
@@ -120,8 +167,6 @@ class EventDetailPage extends StatelessWidget {
                       const SizedBox(height: 24),
                       const Divider(),
                       const SizedBox(height: 16),
-
-                      // アクセス情報
                       Text(
                         'アクセス',
                         style: Theme.of(context).textTheme.titleLarge,
@@ -131,15 +176,14 @@ class EventDetailPage extends StatelessWidget {
                         context,
                         icon: Icons.location_on,
                         title: '住所',
-                        content: event.address,
+                        content: widget.event.address,
                       ),
                       _buildInfoSection(
                         context,
                         icon: Icons.train,
                         title: 'アクセス',
-                        content: event.access,
+                        content: widget.event.access,
                       ),
-
                       const SizedBox(height: 24),
                       Text(
                         '開催場所',

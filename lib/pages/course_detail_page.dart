@@ -1,15 +1,15 @@
-// lib/pages/course_detail_page.dart (修正版)
+// lib/pages/course_detail_page.dart
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-// import 'package:url_launcher/url_launcher.dart'; // Google マップを開くために不要になったので削除
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/course_item.dart';
 import '../models/content_item.dart';
 import '../services/firestore_service.dart';
 import '../widgets/header.dart';
 import '../widgets/bottom_navigation.dart';
-import 'map_page.dart'; // ★★★ アプリ内マップページをインポート ★★★
+import 'map_page.dart';
 
 class CourseDetailPage extends StatefulWidget {
   final String courseId;
@@ -22,6 +22,7 @@ class CourseDetailPage extends StatefulWidget {
 
 class CourseDetailPageState extends State<CourseDetailPage> {
   final FirestoreService _firestoreService = FirestoreService();
+  final User? _user = FirebaseAuth.instance.currentUser;
   late Future<CourseItem> _courseFuture;
 
   @override
@@ -30,28 +31,20 @@ class CourseDetailPageState extends State<CourseDetailPage> {
     _courseFuture = _firestoreService.getCourseWithSpots(widget.courseId);
   }
 
-  // ★★★ spot_detail_page.dart を参考に、アプリ内マップを開く関数を新設 ★★★
   void _navigateToMapPage(ContentItem spot) {
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (context) => MapPage(initialSpot: spot)));
   }
 
-  // --- (不要になった _launchGoogleMaps 関数は削除) ---
-
-  // スポット間の移動案内を表示するWidget
   Widget _buildTransportLink(String accessInfo) {
-    // accessInfoが空の場合は何も表示しない
     if (accessInfo.trim().isEmpty) {
-      accessInfo = "次のスポットへ"; // デフォルトテキスト
+      accessInfo = "次のスポットへ";
     }
     return Container(
-      padding: const EdgeInsets.symmetric(
-        vertical: 24.0,
-        horizontal: 70.0,
-      ), // 横の余白を調整
+      padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 70.0),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center, // 中央寄せ
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Icon(Icons.directions_walk, color: Colors.blueAccent, size: 28),
           const SizedBox(width: 12),
@@ -70,7 +63,6 @@ class CourseDetailPageState extends State<CourseDetailPage> {
     );
   }
 
-  // 各スポットの情報を表示するカードWidget
   Widget _buildSpotCard(BuildContext context, ContentItem spot) {
     final spotLocation = LatLng(spot.latitude, spot.longitude);
 
@@ -82,12 +74,10 @@ class CourseDetailPageState extends State<CourseDetailPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 4:3比率の画像
           AspectRatio(
             aspectRatio: 4 / 3,
             child: Image.network(spot.imageUrl, fit: BoxFit.cover),
           ),
-          // スポット名、説明、住所
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
@@ -115,7 +105,6 @@ class CourseDetailPageState extends State<CourseDetailPage> {
               ],
             ),
           ),
-          // ミニマップ
           SizedBox(
             height: 150,
             child: FlutterMap(
@@ -124,7 +113,7 @@ class CourseDetailPageState extends State<CourseDetailPage> {
                 initialZoom: 16.0,
                 interactionOptions: const InteractionOptions(
                   flags: InteractiveFlag.none,
-                ), // 操作不可
+                ),
               ),
               children: [
                 TileLayer(
@@ -147,16 +136,13 @@ class CourseDetailPageState extends State<CourseDetailPage> {
               ],
             ),
           ),
-          // マップで開くボタン
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                // ★★★ ボタンの処理を新しい関数に変更 ★★★
                 onPressed: () => _navigateToMapPage(spot),
                 icon: const Icon(Icons.map),
-                // ★★★ ラベルを「マップで見る」に統一 ★★★
                 label: const Text('マップで見る'),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 12),
@@ -195,23 +181,65 @@ class CourseDetailPageState extends State<CourseDetailPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // コースのメイン画像
                     Image.network(
                       course.imageUrl,
                       fit: BoxFit.cover,
                       height: 250,
                       width: double.infinity,
                     ),
-                    // コースのタイトルと説明
                     Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            course.title,
-                            style: Theme.of(context).textTheme.headlineMedium
-                                ?.copyWith(fontWeight: FontWeight.bold),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  course.title,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .headlineMedium
+                                      ?.copyWith(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                              if (_user != null)
+                                StreamBuilder<bool>(
+                                  stream: _firestoreService.isFavorite(
+                                    'courses',
+                                    course.id,
+                                  ),
+                                  builder: (context, snapshot) {
+                                    final isFavorited = snapshot.data ?? false;
+                                    return IconButton(
+                                      icon: Icon(
+                                        isFavorited
+                                            ? Icons.favorite
+                                            : Icons.favorite_border,
+                                        color: isFavorited
+                                            ? Colors.red
+                                            : Colors.grey,
+                                        size: 30,
+                                      ),
+                                      onPressed: () {
+                                        if (isFavorited) {
+                                          _firestoreService.removeFavorite(
+                                            'courses',
+                                            course.id,
+                                          );
+                                        } else {
+                                          _firestoreService.addFavorite(
+                                            'courses',
+                                            course.id,
+                                          );
+                                        }
+                                      },
+                                    );
+                                  },
+                                ),
+                            ],
                           ),
                           const SizedBox(height: 8),
                           Text(
@@ -222,7 +250,6 @@ class CourseDetailPageState extends State<CourseDetailPage> {
                         ],
                       ),
                     ),
-                    // スポットリストを動的に生成
                     ListView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
@@ -231,12 +258,8 @@ class CourseDetailPageState extends State<CourseDetailPage> {
                         final spot = course.spots[index];
                         return Column(
                           children: [
-                            // 最初のスポット以外は、カードの前にアクセス情報を表示
                             if (index > 0) _buildTransportLink(spot.access),
-
                             _buildSpotCard(context, spot),
-
-                            // 最後のスポットの場合は下に余白を追加
                             if (index == course.spots.length - 1)
                               const SizedBox(height: 32),
                           ],
